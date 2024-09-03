@@ -1,0 +1,113 @@
+# Comments are provided throughout this file to help you get started.
+# If you need more help, visit the Docker Compose reference guide at
+# https://docs.docker.com/go/compose-spec-reference/
+
+# Here the instructions define your application as a service called "server".
+# This service is built from the Dockerfile in the current directory.
+# You can add other services your application may depend on here, such as a
+# database or a cache. For examples, see the Awesome Compose repository:
+# https://github.com/docker/awesome-compose
+
+services:
+  auth-service:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command:
+      - start-dev
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8080"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+
+  bikes-service:
+    container_name: bike-station
+    build:
+      context: ./bike-station-service
+    ports:
+      - "8081:8080"
+    depends_on:
+      # auth-service:
+        # condition: service_healthy
+      db-bike-station:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db-bike-station:3306/bike-station
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=prometheus
+      - MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED=true
+  
+  rentals-service:
+    container_name: rental-reservation
+    build:
+      context: ./rental-reservation-service
+    ports:
+      - "8082:8080"
+    depends_on:
+      # bikes-service:
+        # condition: service_healthy
+      db-rental-reservation:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db-rental-reservation:3306/rental-reservation
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=prometheus
+      - MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED=true
+
+  # payment-service:
+  #   container_name: mercado-pago-gateway
+  #   build:
+  #     context: ./mercadopago-gateway
+  #   ports:
+  #     - "8083:8080"
+
+  monitoring:
+    image: prom/prometheus
+    container_name: monitoring
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  
+  db-bike-station:
+    image: mysql:8.0
+    restart: always
+    volumes:
+       - db-bike-station-data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=bike-station
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-rental-reservation:
+    image: mysql:8.0
+    restart: always
+    volumes:
+      - db-rental-reservation-data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=rental-reservation
+    ports:
+      - "3308:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db-bike-station-data:
+  db-rental-reservation-data:

@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'bike-station'
+    static_configs:
+      - targets: ['bike-station:8081']
+
+  - job_name: 'rental-reservation'
+    static_configs:
+      - targets: ['rental-reservation:8082']
