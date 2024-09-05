@@ -12,6 +12,11 @@ scrape_configs:
     static_configs:
       - targets: ['rental-reservation:8082']
 
-  - job_name: 'docker'
+  - job_name: 'payment-service'
+    metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: ['192.168.1.14:9323']
+      - targets: ['mercado-pago-gateway:8083']
+
+  # - job_name: 'docker'
+  #   static_configs:
+  #     - targets: ['192.168.1.14:9323']
